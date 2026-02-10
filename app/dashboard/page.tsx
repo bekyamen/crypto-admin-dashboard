@@ -1,19 +1,24 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUpRight, ArrowDownLeft, TrendingUp, Wallet, PieChart, Activity } from 'lucide-react';
 import PortfolioChart from '@/components/dashboard/portfolio-chart';
 import RecentTransactions from '@/components/dashboard/recent-transactions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowUpRight, ArrowDownLeft, TrendingUp, Wallet, PieChart, Activity } from 'lucide-react';
 
 export default function DashboardPage() {
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-8">uth
+
+
+
+    
       <div>
         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
         <p className="text-slate-400 mt-2">Welcome back! Here's your portfolio overview.</p>
       </div>
 
       {/* Stats Grid */}
+       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-slate-800 bg-slate-900/50 hover:bg-slate-900/80 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
