@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_API_BASE =
-  process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_ADMIN_API_BASE_UR ||
   'http://localhost:5000/api/admin';
 
 export async function GET(req: NextRequest) {

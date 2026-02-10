@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/auth-context';
 import { useCallback } from 'react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api/admin';
+const API_BASE_URL = process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL || 'http://localhost:5000/api/admin';
 interface FetchOptions extends RequestInit {
   headers?: Record<string, string>;
 }
