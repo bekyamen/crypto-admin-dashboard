@@ -16,21 +16,24 @@ export default function AdminManagementPage() {
   };
 
   return (
-    <main className="flex-1 bg-slate-900 p-8">
+    <main className="flex-1 bg-slate-900 min-h-screen px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="max-w-7xl mx-auto space-y-8">
+
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-100 mb-2">Admin Management</h1>
-          <p className="text-slate-400">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-100 mb-2">
+            Admin Management
+          </h1>
+          <p className="text-slate-400 text-sm sm:text-base max-w-2xl">
             Control global trading settings, probabilities, and user overrides
           </p>
         </div>
 
-        {/* Statistics */}
+        {/* Admin Statistics */}
         <AdminStatistics refreshTrigger={refreshTrigger} />
 
         {/* Controls Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
           <GlobalModeControl onSettingsUpdate={handleSettingsUpdate} />
           <WinProbabilityControl onSettingsUpdate={handleSettingsUpdate} />
         </div>
@@ -41,6 +44,7 @@ export default function AdminManagementPage() {
           <BetConfigManager onSettingsUpdate={handleSettingsUpdate} />
           <DangerZone onReset={handleSettingsUpdate} />
         </div>
+
       </div>
     </main>
   );

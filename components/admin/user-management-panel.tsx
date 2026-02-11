@@ -47,7 +47,6 @@ export function UserManagementPanel() {
     loadUsers();
   }, [offset]);
 
-  // ---------------- Safe filtering ----------------
   const filteredUsers = users.filter((user) => {
     if (!user) return false;
     const email = user.email ?? '';
@@ -61,10 +60,7 @@ export function UserManagementPanel() {
   const handleAdjustBalance = async (userId: string) => {
     const amount = parseFloat(balanceAmount[userId] || '0');
     const reason = balanceReason[userId] || '';
-    if (!amount || !reason) {
-      alert('Please enter an amount and reason');
-      return;
-    }
+    if (!amount || !reason) return alert('Please enter an amount and reason');
     const result = await adjustBalance(userId, amount, reason);
     if (result) {
       setSuccessMessage(`Balance updated: $${result.newBalance}`);
@@ -76,15 +72,9 @@ export function UserManagementPanel() {
     }
   };
 
-  
-
-
   const handleResetPassword = async (userId: string) => {
     const password = newPassword[userId];
-    if (!password) {
-      alert('Please enter a new password');
-      return;
-    }
+    if (!password) return alert('Please enter a new password');
     const result = await resetPassword(userId, password);
     if (result) {
       setSuccessMessage('Password reset successfully');
@@ -132,33 +122,32 @@ export function UserManagementPanel() {
       )}
 
       {/* Search Bar */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Input
           placeholder="Search by name or email"
-          className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400"
+          className="flex-1 bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <Button onClick={() => setOffset(0)}>Refresh</Button>
+        <Button className="w-full sm:w-auto" onClick={() => setOffset(0)}>Refresh</Button>
       </div>
 
       {/* Users Table */}
-      <Card className="bg-slate-800 border-slate-700 overflow-hidden">
-        <table className="w-full">
+      <Card className="bg-slate-800 border-slate-700 overflow-x-auto">
+        <table className="w-full min-w-[700px]">
           <thead className="bg-slate-900/60 border-b border-slate-700">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-200">User</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-200">Email</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold uppercase text-slate-200">Balance</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold uppercase text-slate-200">Earnings</th>
-              <th className="px-6 py-4 text-center text-xs font-semibold uppercase text-slate-200">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-200">User</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-200">Email</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-200">Balance</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-200">Earnings</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold uppercase text-slate-200">Actions</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-slate-700">
             {filteredUsers.map((user) => {
               if (!user) return null;
-
               const userId = user.id ?? 'unknown';
               const userBalance = user.balance ?? 0;
               const userEarnings = user.totalEarnings ?? 0;
@@ -168,27 +157,25 @@ export function UserManagementPanel() {
 
               return (
                 <tr key={userId} className="hover:bg-slate-700/40 transition">
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3">
                     <p className="text-slate-100 font-medium">{firstName} {lastName}</p>
-                    <p className="text-xs text-slate-400">{userId?.slice(0, 8) ?? 'N/A'}...</p>
+                    <p className="text-xs text-slate-400 truncate max-w-[120px]">{userId.slice(0, 8)}...</p>
                   </td>
-                  <td className="px-6 py-4 text-slate-300">{email}</td>
-                  <td className="px-6 py-4 text-right text-slate-100 font-mono">${userBalance.toFixed(2)}</td>
-                  <td className={`px-6 py-4 text-right font-mono font-semibold ${userEarnings >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <td className="px-4 py-3 text-slate-300 truncate max-w-[150px]">{email}</td>
+                  <td className="px-4 py-3 text-right text-slate-100 font-mono">${userBalance.toFixed(2)}</td>
+                  <td className={`px-4 py-3 text-right font-mono font-semibold ${userEarnings >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     ${userEarnings.toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 text-center flex flex-col md:flex-row justify-center items-center gap-1">
-                    {/* Existing Buttons */}
+                  <td className="px-4 py-3 flex flex-col md:flex-row items-center justify-center gap-2">
                     <Button size="sm" variant="ghost" className="text-blue-400 hover:text-blue-300" onClick={() => setExpandedUser(userId)}>
                       <Edit2 size={16} />
                     </Button>
-                   
                     <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(userId, firstName)}>
                       <Trash2 size={16} />
                     </Button>
 
-                    {/* Inline Force Outcome */}
-                    <div className="flex flex-col md:flex-row gap-1 mt-2 md:mt-0">
+                    {/* Inline Override */}
+                    <div className="flex flex-col md:flex-row gap-1 w-full md:w-auto mt-2 md:mt-0">
                       <select
                         className="bg-slate-700 border-slate-600 text-slate-100 p-1 rounded text-sm"
                         value={inlineForceOutcome[userId] || ''}
@@ -197,11 +184,9 @@ export function UserManagementPanel() {
                         }
                       >
                         <option value="">-- Outcome --</option>
-                        <option value="win"> Win</option>
-                        <option value="lose"> Lose</option>
+                        <option value="win">Win</option>
+                        <option value="lose">Lose</option>
                         <option value="null">Random</option>
-                        
-                       
                       </select>
 
                       <input
@@ -211,7 +196,6 @@ export function UserManagementPanel() {
                         onChange={(e) =>
                           setInlineExpiresAt({ ...inlineExpiresAt, [userId]: e.target.value })
                         }
-                        placeholder="Expires At"
                       />
 
                       <Button
@@ -243,23 +227,15 @@ export function UserManagementPanel() {
 
         {/* Pagination */}
         {totalUsers > limit && (
-          <div className="flex justify-between items-center px-6 py-3 bg-slate-900/50 border-t border-slate-700 text-slate-200 text-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 bg-slate-900/50 border-t border-slate-700 text-slate-200 text-sm gap-2 sm:gap-0">
             <span>
               Page {offset / limit + 1} of {totalPages} ({totalUsers} users)
             </span>
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - limit))}
-              >
+              <Button size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}>
                 Previous
               </Button>
-              <Button
-                size="sm"
-                disabled={offset + limit >= totalUsers}
-                onClick={() => setOffset(offset + limit)}
-              >
+              <Button size="sm" disabled={offset + limit >= totalUsers} onClick={() => setOffset(offset + limit)}>
                 Next
               </Button>
             </div>
@@ -267,12 +243,11 @@ export function UserManagementPanel() {
         )}
       </Card>
 
-      {/* Center Modal */}
+      {/* Modal for Expanded User */}
       {expandedUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
-          <Card className="w-full max-w-2xl bg-slate-800 border-slate-700 p-6">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md sm:max-w-2xl bg-slate-800 border-slate-700 p-6">
             <h3 className="text-xl font-semibold text-slate-100 mb-4">User Actions</h3>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Adjust Balance */}
               <Card className="p-4 bg-slate-900 border-slate-700">
@@ -281,13 +256,13 @@ export function UserManagementPanel() {
                 </h4>
                 <Input
                   type="number"
-                  placeholder="Enter amount (positive or negative)"
+                  placeholder="Enter amount"
                   className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400"
                   value={balanceAmount[expandedUser] || ''}
                   onChange={(e) => setBalanceAmount({ ...balanceAmount, [expandedUser]: e.target.value })}
                 />
                 <Input
-                  placeholder="Reason (e.g., Bonus, Refund, Penalty)"
+                  placeholder="Reason"
                   className="mt-2 bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400"
                   value={balanceReason[expandedUser] || ''}
                   onChange={(e) => setBalanceReason({ ...balanceReason, [expandedUser]: e.target.value })}
@@ -315,7 +290,7 @@ export function UserManagementPanel() {
               </Card>
             </div>
 
-            <Button variant="ghost" className="mt-4 text-slate-300 hover:text-black" onClick={() => setExpandedUser(null)}>
+            <Button variant="ghost" className="mt-4 text-slate-300 hover:text-black w-full" onClick={() => setExpandedUser(null)}>
               Close
             </Button>
           </Card>
