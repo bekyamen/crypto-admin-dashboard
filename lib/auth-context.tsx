@@ -51,29 +51,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // 🔐 ADMIN-ONLY LOGIN
   const login = async (email: string, password: string) => {
-    const res = await fetch('https://final-crypto-web-application.onrender.com/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-    const data = await res.json();
+  if (!API_URL) {
+    throw new Error('API URL is not defined in environment variables');
+  }
 
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || 'Login failed');
-    }
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
 
-    // 🚫 Block non-admins
-    if (data.data.user.role !== 'ADMIN') {
-      throw new Error('Access denied: Admins only');
-    }
+  const data = await res.json();
 
-    setUser(data.data.user);
-    setToken(data.data.token);
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Login failed');
+  }
 
-    localStorage.setItem('admin_user', JSON.stringify(data.data.user));
-    localStorage.setItem('admin_token', data.data.token);
-  };
+  if (data.data.user.role !== 'ADMIN') {
+    throw new Error('Access denied: Admins only');
+  }
+
+  setUser(data.data.user);
+  setToken(data.data.token);
+
+  localStorage.setItem('admin_user', JSON.stringify(data.data.user));
+  localStorage.setItem('admin_token', data.data.token);
+};
+
 
   const logout = () => {
     setUser(null);
