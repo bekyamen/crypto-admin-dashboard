@@ -44,12 +44,13 @@ export default function AdminAddBalance() {
     
     setLoadingHistory(true);
     try {
-      const res = await fetch(`${API_URL}/balance-history`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
+      const res = await fetch(`${API_URL}/demo-balance-history`, {
+  headers: { 
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+});
+
       
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
@@ -93,7 +94,7 @@ export default function AdminAddBalance() {
     setMessage(null);
 
     try {
-      const res = await fetch(`${API_URL}/users/add-balance/all`, {
+      const res = await fetch(`${API_URL}/users/add-demo-balance/all`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
