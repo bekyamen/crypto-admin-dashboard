@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 
-// Update the type to match the API response structure
 type BalanceHistoryItem = {
   id: string;
   adminId: string;
@@ -32,6 +31,7 @@ export default function AdminAddBalance() {
   const { token } = useAuth();
   const [amount, setAmount] = useState<number | "">("");
   const [reason, setReason] = useState<string>("");
+  const [mode, setMode] = useState<"add" | "set">("add");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<BalanceHistoryItem[]>([]);
@@ -41,24 +41,19 @@ export default function AdminAddBalance() {
 
   const fetchHistory = async () => {
     if (!token) return;
-    
+
     setLoadingHistory(true);
     try {
       const res = await fetch(`${API_URL}/demo-balance-history`, {
-  headers: { 
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  },
-});
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
       const response = await res.json();
-      
-      // Check if response has the expected structure
       if (response.success && Array.isArray(response.data)) {
         setHistory(response.data);
       } else {
@@ -74,9 +69,7 @@ export default function AdminAddBalance() {
   };
 
   useEffect(() => {
-    if (token) {
-      fetchHistory();
-    }
+    if (token) fetchHistory();
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,22 +87,22 @@ export default function AdminAddBalance() {
     setMessage(null);
 
     try {
-      const res = await fetch(`${API_URL}/users/add-demo-balance/all`, {
+      const res = await fetch(`${API_URL}/users/demo-balance/all`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ amount, reason }),
+        body: JSON.stringify({ amount, reason, mode }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        setMessage(`${amount} has been added as demo balance to all users.`);
+        setMessage(data.message); // Use API response message
         setAmount("");
         setReason("");
-        // Refresh history after successful addition
+        setMode("add");
         await fetchHistory();
       } else {
         setMessage(data.message || "Something went wrong");
@@ -122,22 +115,20 @@ export default function AdminAddBalance() {
     }
   };
 
-  // Helper function to format the date
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } catch (error) {
       return dateString;
     }
   };
 
-  // Group history by date or just show all in reverse chronological order
   const sortedHistory = [...history].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -145,15 +136,11 @@ export default function AdminAddBalance() {
   return (
     <div className="min-h-screen bg-black flex justify-center items-start py-12 px-4">
       <div className="w-full max-w-4xl bg-[#111111] border border-gray-800 shadow-2xl rounded-xl p-10">
-        <h2 className="text-2xl font-bold text-white mb-8">
-          Add Balance to All Users
-        </h2>
+        <h2 className="text-2xl font-bold text-white mb-8">Add Balance to All Users</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block mb-2 text-gray-300 font-medium">
-              Amount
-            </label>
+            <label className="block mb-2 text-gray-300 font-medium">Amount</label>
             <input
               type="number"
               value={amount}
@@ -166,9 +153,7 @@ export default function AdminAddBalance() {
           </div>
 
           <div>
-            <label className="block mb-2 text-gray-300 font-medium">
-              Reason
-            </label>
+            <label className="block mb-2 text-gray-300 font-medium">Reason</label>
             <input
               type="text"
               value={reason}
@@ -178,28 +163,41 @@ export default function AdminAddBalance() {
             />
           </div>
 
+          <div>
+            <label className="block mb-2 text-gray-300 font-medium">Mode</label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value as "add" | "set")}
+              className="w-full bg-black border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            >
+              <option value="add">Add to existing balance</option>
+              <option value="set">Set new balance</option>
+            </select>
+          </div>
+
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-semibold"
             disabled={loading || !amount || !reason}
           >
-            {loading ? "Adding..." : "Add Balance to All Users"}
+            {loading ? (mode === "add" ? "Adding..." : "Setting...") : mode === "add" ? "Add Balance to All Users" : "Set Balance for All Users"}
           </button>
         </form>
 
         {message && (
-          <p className={`mt-6 text-center font-medium ${
-            message.includes("Failed") ? "text-red-400" : "text-green-400"
-          }`}>
+          <p
+            className={`mt-6 text-center font-medium ${
+              message.includes("Failed") ? "text-red-400" : "text-green-400"
+            }`}
+          >
             {message}
           </p>
         )}
 
+        {/* HISTORY TABLE */}
         <div className="mt-10">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-white">
-              Balance History
-            </h3>
+            <h3 className="text-xl font-semibold text-white">Balance History</h3>
             <button
               onClick={fetchHistory}
               disabled={loadingHistory}
@@ -243,15 +241,9 @@ export default function AdminAddBalance() {
                             Balance: {action.changes.newBalance}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-300">
-                          {action.reason || "—"}
-                        </td>
-                        <td className="px-4 py-3 text-gray-400">
-                          {action.admin.email}
-                        </td>
-                        <td className="px-4 py-3 text-gray-400 text-xs">
-                          {formatDate(action.createdAt)}
-                        </td>
+                        <td className="px-4 py-3 text-gray-300">{action.reason || "—"}</td>
+                        <td className="px-4 py-3 text-gray-400">{action.admin.email}</td>
+                        <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(action.createdAt)}</td>
                       </tr>
                     ))}
                   </tbody>
