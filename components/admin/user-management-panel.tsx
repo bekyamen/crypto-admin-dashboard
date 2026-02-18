@@ -183,7 +183,7 @@ export function UserManagementPanel() {
                           setInlineForceOutcome({ ...inlineForceOutcome, [userId]: e.target.value as 'win' | 'lose' | 'null' | '' })
                         }
                       >
-                        <option value="">-- Outcome --</option>
+                      
                         <option value="win">Win</option>
                         <option value="lose">Lose</option>
                         <option value="null">Random</option>
