@@ -14,6 +14,7 @@ export interface User {
   balance: number;
   totalEarnings: number;
   createdAt: string;
+  mode: string;
 }
 
 export interface BalanceAdjustment {
@@ -89,6 +90,44 @@ export function useAdminTradesApi() {
     [token]
   );
 
+  // -------------------- Get Users With Mode --------------------
+const getUsersWithMode = useCallback(async (): Promise<User[] | null> => {
+  setIsLoading(true);
+  setError(null);
+  try {
+    const response = await fetch(`${API_BASE_URL}/users-with-mode`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token || ''}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Unauthorized - Invalid token');
+      throw new Error(`Failed to fetch users with mode: ${response.status}`);
+    }
+
+    const data: ApiResponse<{ total: number; users: User[] }> = await response.json();
+    console.log('[AdminTradesAPI] Users with mode fetched:', data.data.users.length);
+
+    // Add 'mode' field to match your User interface if needed
+    return data.data.users.map((user) => ({
+      ...user,
+      forceOutcome: user.mode?.toLowerCase() === 'win' ? 'win'
+                    : user.mode?.toLowerCase() === 'lose' ? 'lose'
+                    : null,
+    }));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to fetch users with mode';
+    console.error('[AdminTradesAPI] getUsersWithMode Error:', msg);
+    setError(msg);
+    return null;
+  } finally {
+    setIsLoading(false);
+  }
+}, [token]);
+
+
   // -------------------- Get User By ID --------------------
   const getUserById = useCallback(
     async (userId: string): Promise<User | null> => {
@@ -159,41 +198,40 @@ export function useAdminTradesApi() {
 
   // -------------------- Adjust Balance --------------------
   const adjustBalance = useCallback(
-    async (userId: string, amount: number, reason: string): Promise<BalanceAdjustment | null> => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        console.log('[v0] Admin Trades API: Adjusting balance', { userId, amount, reason });
-        const response = await fetch(`${API_BASE_URL}/trades/balance`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token || ''}`,
-          },
-          body: JSON.stringify({ userId, amount, reason }),
-        });
+  async (userId: string, amount: number, reason: string, mode: 'add' | 'deduct' | 'set' = 'add'): Promise<BalanceAdjustment | null> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log('[v0] Admin Trades API: Adjusting balance', { userId, amount, reason, mode });
+      const response = await fetch(`${API_BASE_URL}/trades/balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token || ''}`,
+        },
+        body: JSON.stringify({ userId, amount, reason, mode }), // ✅ include mode
+      });
 
-        if (!response.ok) {
-          if (response.status === 401) throw new Error('Unauthorized - Invalid token');
-          if (response.status === 404) throw new Error('User not found');
-          throw new Error(`Failed to adjust balance: ${response.status}`);
-        }
-
-        const data: ApiResponse<BalanceAdjustment> = await response.json();
-        console.log('[v0] Admin Trades API: Balance adjusted');
-        return data.data;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to adjust balance';
-        console.error('[v0] Admin Trades API Error:', msg);
-        setError(msg);
-        return null;
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        if (response.status === 401) throw new Error('Unauthorized - Invalid token');
+        if (response.status === 404) throw new Error('User not found');
+        throw new Error(`Failed to adjust balance: ${response.status}`);
       }
-    },
-    [token]
-  );
 
+      const data: ApiResponse<BalanceAdjustment> = await response.json();
+      console.log('[v0] Admin Trades API: Balance adjusted');
+      return data.data;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to adjust balance';
+      console.error('[v0] Admin Trades API Error:', msg);
+      setError(msg);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  },
+  [token]
+);
   // -------------------- Reset Password --------------------
   const resetPassword = useCallback(
     async (userId: string, newPassword: string): Promise<PasswordResetResponse | null> => {
@@ -278,6 +316,7 @@ export function useAdminTradesApi() {
     adjustBalance,
     resetPassword,
     setUserOverride,
+    getUsersWithMode, 
     isLoading,
     error,
   };
