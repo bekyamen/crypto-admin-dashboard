@@ -5,9 +5,10 @@ import { useAdminMethods } from '@/lib/use-admin-api';
 import { useAdminTradesApi } from '@/lib/use-admin-trades-api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { AlertCircle, CheckCircle, Users, X, ChevronDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, Users, X } from 'lucide-react';
 
-// User interface
+/* -------------------- Types -------------------- */
+
 interface User {
   id: string;
   email?: string;
@@ -15,222 +16,205 @@ interface User {
   lastName?: string;
 }
 
-// Override interface
 interface UserOverride {
   userId: string;
   forceOutcome: 'win' | 'lose' | null;
   expiresAt?: string;
 }
 
-// Settings response type
 interface SettingsResponse {
-  userOverrides: UserOverride[];
+  data?: {
+    userOverrides?: UserOverride[];
+  };
 }
 
-// Props
-interface UserOverrideManagerProps {
+interface UsersResponse {
+  data?: {
+    users?: User[];
+  };
+}
+
+interface Props {
   onSettingsUpdate?: () => void;
 }
 
-export function UserOverrideManager({ onSettingsUpdate }: UserOverrideManagerProps) {
+/* -------------------- Component -------------------- */
+
+export function UserOverrideManager({ onSettingsUpdate }: Props) {
   const adminMethods = useAdminMethods();
   const { getAllUsers } = useAdminTradesApi();
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [overrides, setOverrides] = useState<UserOverride[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [outcome, setOutcome] = useState<'win' | 'lose'>('win');
-  const [expiresAt, setExpiresAt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetchingUsers, setIsFetchingUsers] = useState(true);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [message, setMessage] = useState<
+    { type: 'success' | 'error'; text: string } | null
+  >(null);
 
-  // Load overrides safely
+  /* -------------------- Safe Load Settings -------------------- */
+
   const loadSettings = async () => {
     try {
-      const result = (await adminMethods.getSettings()) as
-        | { data?: SettingsResponse }
-        | null;
+      const result = (await adminMethods.getSettings()) as SettingsResponse;
 
-      if (Array.isArray(result?.data?.userOverrides)) {
-        setOverrides(result.data.userOverrides);
-      } else {
-        setOverrides([]);
-      }
+      const overrideArray =
+        result?.data?.userOverrides &&
+        Array.isArray(result.data.userOverrides)
+          ? result.data.userOverrides
+          : [];
+
+      setOverrides(overrideArray);
     } catch (err) {
       console.error('Failed to load overrides:', err);
       setOverrides([]);
     }
   };
 
-  // Load initial users + overrides
-  const loadInitialData = async () => {
-    setIsFetchingUsers(true);
+  /* -------------------- Safe Load Users -------------------- */
+
+  const loadUsers = async () => {
     try {
-      const usersResult = await getAllUsers(500, 0);
-      if (Array.isArray(usersResult?.users)) setAllUsers(usersResult.users);
-      await loadSettings();
+      const usersResult = (await getAllUsers(500, 0)) as UsersResponse;
+
+      const usersArray =
+        usersResult?.data?.users &&
+        Array.isArray(usersResult.data.users)
+          ? usersResult.data.users
+          : [];
+
+      setAllUsers(usersArray);
     } catch (err) {
-      console.error('Failed to load initial data:', err);
-    } finally {
-      setIsFetchingUsers(false);
+      console.error('Failed to load users:', err);
+      setAllUsers([]);
     }
   };
 
+  /* -------------------- Initial Load -------------------- */
+
   useEffect(() => {
-    loadInitialData();
+    const init = async () => {
+      setIsFetching(true);
+      try {
+        await Promise.all([loadUsers(), loadSettings()]);
+      } catch (err) {
+        console.error('Initial load error:', err);
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    init();
   }, []);
 
-  const handleSetOverride = async () => {
-    if (!selectedUserId.trim()) {
-      setMessage({ type: 'error', text: 'Please select a user' });
-      return;
-    }
+  /* -------------------- Remove Override -------------------- */
 
+  const handleRemoveOverride = async (userId: string) => {
     setIsLoading(true);
     setMessage(null);
 
     try {
-      const result = await adminMethods.setUserOverride(
-        selectedUserId,
-        outcome,
-        expiresAt || undefined
-      );
+      const result = await adminMethods.setUserOverride(userId, null);
 
-      const selectedUser = allUsers.find((u) => u.id === selectedUserId);
-      const name =
-        `${selectedUser?.firstName ?? ''} ${selectedUser?.lastName ?? ''}`.trim() || 'User';
-
-      if (result?.success) {
-        setMessage({ type: 'success', text: `Force ${outcome.toUpperCase()} set for ${name}` });
-        setSelectedUserId('');
-        setShowUserDropdown(false);
-        setExpiresAt('');
-        await loadInitialData();
-        onSettingsUpdate?.();
-      } else {
-        setMessage({ type: 'error', text: 'Failed to set user override' });
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'Failed to set user override' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRemoveOverride = async (overrideUserId: string) => {
-    setIsLoading(true);
-    try {
-      const result = await adminMethods.setUserOverride(overrideUserId, null);
       if (result?.success) {
         setMessage({ type: 'success', text: 'Override removed successfully' });
-        await loadInitialData();
+        await loadSettings();
         onSettingsUpdate?.();
       } else {
         setMessage({ type: 'error', text: 'Failed to remove override' });
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       setMessage({ type: 'error', text: 'Failed to remove override' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getUserDisplay = (user?: User) => {
-    const first = user?.firstName ?? '';
-    const last = user?.lastName ?? '';
-    const email = user?.email ?? 'N/A';
-    return `${first} ${last} (${email})`.trim();
-  };
+  /* -------------------- UI -------------------- */
 
   return (
-  <Card className="p-6 bg-slate-900 border border-slate-700 shadow-xl shadow-black/40 rounded-2xl">
-    <div className="space-y-6">
+    <Card className="p-6 bg-slate-900 border border-slate-700 rounded-2xl text-white">
+      <div className="space-y-6">
 
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-slate-700 pb-4">
-        <div className="p-2 bg-cyan-500/10 rounded-lg">
-          <Users className="text-white" size={20} />
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-slate-700 pb-4">
+          <Users size={20} className="text-white" />
+          <h3 className="text-lg font-semibold text-white">
+            User-Specific Adjustments
+          </h3>
         </div>
-        <h3 className="text-lg font-semibold text-white tracking-wide">
-          User-Specific Adjustments
-        </h3>
-      </div>
 
-      {/* Active Overrides */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-bold text-white uppercase tracking-widest">
-          Manual Outcome Control ({overrides.length})
-        </h4>
+        {/* Loading */}
+        {isFetching && (
+          <div className="text-center py-6 text-white">
+            Loading...
+          </div>
+        )}
 
-        {overrides.length === 0 ? (
-          <div className="text-center py-8 text-white text-sm bg-slate-800 rounded-xl border border-slate-700">
+        {/* Overrides */}
+        {!isFetching && overrides.length === 0 && (
+          <div className="text-center py-8 bg-slate-800 rounded-xl border border-slate-700 text-white">
             No active overrides
           </div>
-        ) : (
-          <div className="space-y-3">
-            {(Array.isArray(overrides) ? overrides : []).map((override) => {
-              const user = allUsers.find((u) => u.id === override.userId);
+        )}
+
+        {!isFetching && overrides.length > 0 && (
+          <div className="space-y-4">
+            {overrides.map((override) => {
+              const user = allUsers.find(
+                (u) => u.id === override.userId
+              );
+
               const userName =
-                `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'User';
+                `${user?.firstName ?? ''} ${
+                  user?.lastName ?? ''
+                }`.trim() || 'User';
+
               const userEmail = user?.email ?? 'N/A';
+
+              const validDate =
+                override.expiresAt &&
+                !isNaN(new Date(override.expiresAt).getTime());
 
               return (
                 <div
                   key={override.userId}
-                  className="flex items-center justify-between p-5 bg-slate-800 rounded-2xl border border-slate-700 hover:border-slate-500 hover:bg-slate-800/80 transition-all duration-200"
+                  className="flex justify-between items-center p-5 bg-slate-800 border border-slate-700 rounded-2xl"
                 >
-                  {/* LEFT SIDE */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-md">
-                        <span className="text-white font-semibold text-sm">
-                          {(user?.firstName?.charAt(0) ?? '') +
-                            (user?.lastName?.charAt(0) ?? '')}
-                        </span>
-                      </div>
+                  <div>
+                    <p className="font-semibold text-white">
+                      {userName}
+                    </p>
+                    <p className="text-sm text-white">
+                      {userEmail}
+                    </p>
 
-                      <div>
-                        <p className="text-sm font-semibold text-white">
-                          {userName}
-                        </p>
-                        <p className="text-xs text-white">
-                          {userEmail}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* STATUS BADGES */}
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex gap-3 mt-2 flex-wrap">
                       {override.forceOutcome && (
-                        <span
-                          className={`text-xs px-3 py-1 rounded-full font-semibold tracking-wide shadow-sm text-white ${
-                            override.forceOutcome === 'win'
-                              ? 'bg-emerald-600'
-                              : 'bg-rose-600'
-                          }`}
-                        >
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-700 text-white">
                           FORCE {override.forceOutcome.toUpperCase()}
                         </span>
                       )}
 
-                      {override.expiresAt && (
-                        <span className="text-xs text-white bg-slate-700 px-3 py-1 rounded-full border border-slate-600">
-                          Expires:{" "}
-                          {new Date(override.expiresAt).toLocaleDateString()}{" "}
-                          {new Date(override.expiresAt).toLocaleTimeString()}
+                      {validDate && (
+                        <span className="px-3 py-1 rounded-full text-xs bg-slate-700 text-white">
+                          Expires:{' '}
+                          {new Date(
+                            override.expiresAt!
+                          ).toLocaleString()}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* REMOVE BUTTON */}
                   <Button
-                    onClick={() => handleRemoveOverride(override.userId)}
-                    disabled={isLoading}
                     size="icon"
-                    className="ml-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl h-10 w-10 shadow-md"
+                    disabled={isLoading}
+                    onClick={() =>
+                      handleRemoveOverride(override.userId)
+                    }
+                    className="bg-rose-600 hover:bg-rose-700 text-white"
                   >
                     <X size={16} />
                   </Button>
@@ -239,28 +223,25 @@ export function UserOverrideManager({ onSettingsUpdate }: UserOverrideManagerPro
             })}
           </div>
         )}
-      </div>
 
-      {/* Messages */}
-      {message && (
-        <div
-          className={`flex items-center gap-3 p-4 rounded-xl border text-white ${
-            message.type === 'success'
-              ? 'bg-emerald-600 border-emerald-700'
-              : 'bg-rose-600 border-rose-700'
-          }`}
-        >
-          {message.type === 'success' ? (
-            <CheckCircle size={18} />
-          ) : (
-            <AlertCircle size={18} />
-          )}
-          <span className="text-sm font-medium text-white">
-            {message.text}
-          </span>
-        </div>
-      )}
-    </div>
-  </Card>
-);
+        {/* Message */}
+        {message && (
+          <div
+            className={`flex items-center gap-2 p-4 rounded-xl ${
+              message.type === 'success'
+                ? 'bg-emerald-600'
+                : 'bg-rose-600'
+            }`}
+          >
+            {message.type === 'success' ? (
+              <CheckCircle size={18} />
+            ) : (
+              <AlertCircle size={18} />
+            )}
+            <span>{message.text}</span>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
 }
