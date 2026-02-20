@@ -275,38 +275,43 @@ const getUsersWithMode = useCallback(async (): Promise<User[] | null> => {
 
   // -------------------- Set User Override --------------------
   const setUserOverride = useCallback(
-    async (userId: string, forceOutcome: 'win' | 'lose' | null, expiresAt?: string): Promise<UserOverrideResponse | null> => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`${API_BASE_URL}/user-override`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token || ''}`,
-          },
-          body: JSON.stringify({ userId, forceOutcome, expiresAt }),
-        });
+  async (
+    userId: string,
+    forceOutcome: 'win' | 'lose' | null
+  ): Promise<UserOverrideResponse | null> => {
+    setIsLoading(true);
+    setError(null);
 
-        if (!response.ok) {
-          if (response.status === 401) throw new Error('Unauthorized - Invalid token');
-          throw new Error(`Failed to set user override: ${response.status}`);
-        }
+    try {
+      const response = await fetch(`${API_BASE_URL}/user-override`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token || ''}`,
+        },
+        body: JSON.stringify({ userId, forceOutcome }),
+      });
 
-        const data: ApiResponse<UserOverrideResponse> = await response.json();
-        console.log('[AdminTradesAPI] User override set:', data.data);
-        return data.data;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to set user override';
-        console.error('[AdminTradesAPI] setUserOverride Error:', msg);
-        setError(msg);
-        return null;
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        if (response.status === 401) throw new Error('Unauthorized - Invalid token');
+        throw new Error(`Failed to set user override: ${response.status}`);
       }
-    },
-    [token]
-  );
+
+      const data: ApiResponse<UserOverrideResponse> = await response.json();
+      console.log('[AdminTradesAPI] User override set:', data.data);
+      return data.data;
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to set user override';
+      console.error('[AdminTradesAPI] setUserOverride Error:', msg);
+      setError(msg);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  },
+  [token]
+);
 
   // -------------------- Return API --------------------
   return {
