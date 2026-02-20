@@ -11,11 +11,11 @@ interface Trade {
   tradeId: string;
   userId: string;
   type: 'buy' | 'sell';
-  asset: {
-    symbol: string;
-    name: string;
-    price: number;
-    assetClass: 'crypto' | 'forex' | 'stock';
+  asset?: {
+    symbol?: string;
+    name?: string;
+    price?: number;
+    assetClass?: 'crypto' | 'forex' | 'stock';
   };
   amount: number;
   expirationTime: number;
@@ -29,11 +29,11 @@ interface Trade {
 
 interface User {
   id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  balance: number;
-  totalEarnings: number;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  balance?: number;
+  totalEarnings?: number;
   createdAt: string;
 }
 
@@ -70,9 +70,7 @@ export function UserTradeViewer() {
           ? tradesRes
           : [];
 
-        const usersArray = Array.isArray(usersRes?.users)
-          ? usersRes.users
-          : [];
+        const usersArray = Array.isArray(usersRes?.users) ? usersRes.users : [];
 
         const userMap: Record<string, User> = {};
         usersArray.forEach((u) => {
@@ -82,8 +80,8 @@ export function UserTradeViewer() {
         const enriched: EnrichedTrade[] = tradesArray.map((trade) => ({
           ...trade,
           userEmail: userMap[trade.userId]?.email,
-          userName: `${userMap[trade.userId]?.firstName || ''} ${
-            userMap[trade.userId]?.lastName || ''
+          userName: `${userMap[trade.userId]?.firstName ?? ''} ${
+            userMap[trade.userId]?.lastName ?? ''
           }`.trim(),
         }));
 
@@ -111,9 +109,9 @@ export function UserTradeViewer() {
     setFilteredTrades(
       allTrades.filter(
         (t) =>
-          t.userEmail?.toLowerCase().includes(q) ||
-          t.userName?.toLowerCase().includes(q) ||
-          t.asset.symbol.toLowerCase().includes(q)
+          (t.userEmail ?? '').toLowerCase().includes(q) ||
+          (t.userName ?? '').toLowerCase().includes(q) ||
+          (t.asset?.symbol ?? '').toLowerCase().includes(q)
       )
     );
   }, [searchQuery, allTrades]);
@@ -121,7 +119,7 @@ export function UserTradeViewer() {
   /* -------------------- Sorting -------------------- */
   const sortedTrades = [...filteredTrades].sort((a, b) => {
     if (sortBy === 'profit') return b.profitLossAmount - a.profitLossAmount;
-    if (sortBy === 'trader') return (a.userName || '').localeCompare(b.userName || '');
+    if (sortBy === 'trader') return (a.userName ?? '').localeCompare(b.userName ?? '');
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
@@ -135,72 +133,99 @@ export function UserTradeViewer() {
 
   /* -------------------- UI -------------------- */
   return (
-    <div className="space-y-6">
-      {combinedError && (
-        <div className="bg-red-900/30 border border-red-500 text-red-200 px-4 py-3 rounded flex gap-2">
-          <AlertCircle size={16} />
-          {combinedError}
-        </div>
-      )}
+  <div className="space-y-6 text-white">
 
-      {(isLoading || tradeLoading || userLoading) && (
-        <Card className="p-8 text-center bg-slate-800 border-slate-700">
-          Loading trades and users...
+    {combinedError && (
+      <div className="bg-red-900/40 border border-red-500 text-white px-4 py-3 rounded flex gap-2">
+        <AlertCircle size={16} className="text-white" />
+        {combinedError}
+      </div>
+    )}
+
+    {(isLoading || tradeLoading || userLoading) && (
+      <Card className="p-8 text-center bg-slate-800 border-slate-700 text-white">
+        Loading trades and users...
+      </Card>
+    )}
+
+    {!isLoading && (
+      <>
+        {/* Search */}
+        <Card className="p-4 bg-slate-800 border-slate-700">
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-white"
+            />
+            <Input
+              placeholder="Search trader, email or asset..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+            />
+          </div>
         </Card>
-      )}
 
-      {!isLoading && (
-        <>
-          <Card className="p-4 bg-slate-800 border-slate-700">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <Input
-                placeholder="Search trader, email or asset..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-slate-700 border-slate-600"
-              />
+        {/* Trades Table */}
+        <Card className="p-4 bg-slate-800 border-slate-700 text-white">
+          <div className="flex justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              All Platform Trades
+            </h3>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-white"
+            >
+              <option value="date">Date</option>
+              <option value="profit">Profit</option>
+              <option value="trader">Trader</option>
+            </select>
+          </div>
+
+          {sortedTrades.length === 0 ? (
+            <p className="text-center text-white py-6">
+              No trades found
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-white">
+                <tbody>
+                  {sortedTrades.map((t) => (
+                    <tr
+                      key={t.tradeId}
+                      className="border-b border-slate-700 hover:bg-slate-700/30 transition"
+                    >
+                      <td className="px-3 py-3 text-white">
+                        {t.userName || 'N/A'}
+                      </td>
+
+                      <td className="px-3 py-3 text-white">
+                        {t.asset?.symbol ?? 'N/A'}
+                      </td>
+
+                      <td className="px-3 py-3 text-white">
+                        ${t.amount.toFixed(2)}
+                      </td>
+
+                      <td className="px-3 py-3 font-bold text-white flex items-center gap-2">
+                        {t.profitLossAmount >= 0 ? (
+                          <TrendingUp size={14} className="text-white" />
+                        ) : (
+                          <TrendingDown size={14} className="text-white" />
+                        )}
+                        {t.profitLossAmount.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </Card>
-
-          <Card className="p-4 bg-slate-800 border-slate-700">
-            <div className="flex justify-between mb-4">
-              <h3 className="text-lg font-semibold">All Platform Trades</h3>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-slate-700 border border-slate-600 rounded px-3 py-1"
-              >
-                <option value="date">Date</option>
-                <option value="profit">Profit</option>
-                <option value="trader">Trader</option>
-              </select>
-            </div>
-
-            {sortedTrades.length === 0 ? (
-              <p className="text-center text-slate-400 py-6">No trades found</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {sortedTrades.map((t) => (
-                      <tr key={t.tradeId} className="border-b border-slate-700">
-                        <td className="px-3 py-2">{t.userName || 'N/A'}</td>
-                        <td className="px-3 py-2">{t.asset.symbol}</td>
-                        <td className="px-3 py-2">${t.amount.toFixed(2)}</td>
-                        <td className={`px-3 py-2 font-bold ${t.profitLossAmount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {t.profitLossAmount >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                          {t.profitLossAmount.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </>
-      )}
-    </div>
-  );
+          )}
+        </Card>
+      </>
+    )}
+  </div>
+);
 }
