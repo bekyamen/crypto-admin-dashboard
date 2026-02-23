@@ -142,6 +142,37 @@ export default function AdminAddBalance() {
     }
   };
 
+  // Helper function to determine operation type and display amount
+  const getAmountDisplay = (action: BalanceHistoryItem) => {
+    const amountValue = action.changes?.amountAdded ?? 0;
+    
+    if (amountValue > 0) {
+      // If amountAdded is positive, it was an "add" operation
+      return (
+        <div className="flex flex-col">
+          <span className="text-green-400 font-medium">+{amountValue}</span>
+          <span className="text-xs text-green-600">(added)</span>
+        </div>
+      );
+    } else if (action.changes?.newBalance) {
+      // If amountAdded is 0 or negative but newBalance exists, it might be a "set" operation
+      return (
+        <div className="flex flex-col">
+          <span className="text-blue-400 font-medium">{action.changes.newBalance}</span>
+          <span className="text-xs text-blue-600">(set)</span>
+        </div>
+      );
+    } else {
+      // Fallback
+      return (
+        <div className="flex flex-col">
+          <span className="text-gray-400 font-medium">{amountValue}</span>
+          <span className="text-xs text-gray-600">(unknown)</span>
+        </div>
+      );
+    }
+  };
+
   const sortedHistory = [...history].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -261,8 +292,8 @@ export default function AdminAddBalance() {
                   <tbody className="divide-y divide-gray-800">
                     {sortedHistory.map((action) => (
                       <tr key={action.id} className="hover:bg-gray-900/50 transition">
-                        <td className="px-4 py-3 text-white font-medium">
-                          +{action.changes?.amountAdded ?? 0}
+                        <td className="px-4 py-3">
+                          {getAmountDisplay(action)}
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-white">{action.targetUser?.email ?? 'Unknown User'}</div>
