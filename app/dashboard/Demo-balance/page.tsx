@@ -67,6 +67,10 @@ export default function AdminAddBalance() {
       const response = await res.json();
       if (response.success && Array.isArray(response.data)) {
         setHistory(response.data);
+        // Debug: Log the first item to see structure
+        if (response.data.length > 0) {
+          console.log("Sample history item:", response.data[0]);
+        }
       } else {
         console.error("Unexpected API response structure:", response);
         setHistory([]);
@@ -106,7 +110,11 @@ export default function AdminAddBalance() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ amount, reason, mode }),
+        body: JSON.stringify({ 
+          amount: Number(amount), 
+          reason, 
+          mode 
+        }),
       });
 
       const data = await res.json();
@@ -143,34 +151,66 @@ export default function AdminAddBalance() {
   };
 
   // Helper function to determine operation type and display amount
-  const getAmountDisplay = (action: BalanceHistoryItem) => {
-    const amountValue = action.changes?.amountAdded ?? 0;
+  const getAmountDisplay = (item: BalanceHistoryItem) => {
+    const action = item.action?.toLowerCase() || '';
+    const changes = item.changes;
     
-    if (amountValue > 0) {
-      // If amountAdded is positive, it was an "add" operation
+    // For add operations
+    if (action === 'add' || action.includes('add')) {
+      const addedAmount = changes?.amountAdded ?? 0;
+      const newBalance = changes?.newBalance ?? 0;
+      
       return (
         <div className="flex flex-col">
-          <span className="text-green-400 font-medium">+{amountValue}</span>
+          <span className="text-green-400 font-medium">+{addedAmount}</span>
+          {newBalance > 0 && (
+            <span className="text-xs text-gray-500">→ {newBalance}</span>
+          )}
           <span className="text-xs text-green-600">(added)</span>
         </div>
       );
-    } else if (action.changes?.newBalance) {
-      // If amountAdded is 0 or negative but newBalance exists, it might be a "set" operation
+    }
+    
+    // For set operations
+    if (action === 'set' || action.includes('set')) {
+      const setAmount = changes?.newBalance ?? 0;
+      const addedAmount = changes?.amountAdded ?? 0;
+      
       return (
         <div className="flex flex-col">
-          <span className="text-blue-400 font-medium">{action.changes.newBalance}</span>
+          <span className="text-blue-400 font-medium">{setAmount}</span>
+          {addedAmount > 0 && (
+            <span className="text-xs text-gray-500">(was +{addedAmount})</span>
+          )}
           <span className="text-xs text-blue-600">(set)</span>
         </div>
       );
-    } else {
-      // Fallback
-      return (
-        <div className="flex flex-col">
-          <span className="text-gray-400 font-medium">{amountValue}</span>
-          <span className="text-xs text-gray-600">(unknown)</span>
-        </div>
-      );
     }
+    
+    // Fallback for unknown action types
+    const displayValue = changes?.newBalance ?? changes?.amountAdded ?? 0;
+    return (
+      <div className="flex flex-col">
+        <span className="text-gray-400 font-medium">{displayValue}</span>
+        <span className="text-xs text-gray-600">({action || 'unknown'})</span>
+      </div>
+    );
+  };
+
+  // Get the actual amount value for the operation
+  const getOperationAmount = (item: BalanceHistoryItem): number => {
+    const action = item.action?.toLowerCase() || '';
+    const changes = item.changes;
+    
+    if (action === 'add' || action.includes('add')) {
+      return changes?.amountAdded ?? 0;
+    }
+    
+    if (action === 'set' || action.includes('set')) {
+      return changes?.newBalance ?? 0;
+    }
+    
+    return changes?.newBalance ?? changes?.amountAdded ?? 0;
   };
 
   const sortedHistory = [...history].sort(
@@ -186,13 +226,15 @@ export default function AdminAddBalance() {
   if (!API_URL) return <p className="text-red-400 p-10">API URL not configured</p>;
 
   return (
-    <div className="min-h-screen bg-black flex justify-center items-start py-12 px-4">
+    <div className="min-h-screen bg-black text-white flex justify-center items-start py-12 px-4">
       <div className="w-full max-w-4xl bg-[#111111] border border-gray-800 shadow-2xl rounded-xl p-10">
-        <h2 className="text-2xl font-bold text-white mb-8">Add Balance to All Users</h2>
+        <h2 className="text-2xl font-bold text-white mb-8">Balance Management</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block mb-2 text-gray-300 font-medium">Amount</label>
+            <label className="block mb-2 text-gray-300 font-medium">
+              {mode === 'add' ? 'Amount to Add' : 'New Balance Amount'}
+            </label>
             <input
               type="number"
               value={amount}
@@ -200,8 +242,8 @@ export default function AdminAddBalance() {
                 setAmount(e.target.value === "" ? "" : Number(e.target.value))
               }
               className="w-full bg-black border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
-              placeholder="Enter amount"
-              min="1"
+              placeholder={mode === 'add' ? "Enter amount to add" : "Enter new balance amount"}
+              min="0"
               step="1"
             />
           </div>
@@ -235,9 +277,7 @@ export default function AdminAddBalance() {
             disabled={loading || !amount || !reason}
           >
             {loading
-              ? mode === "add"
-                ? "Adding..."
-                : "Setting..."
+              ? "Processing..."
               : mode === "add"
               ? "Add Balance to All Users"
               : "Set Balance for All Users"}
@@ -247,7 +287,9 @@ export default function AdminAddBalance() {
         {message && (
           <p
             className={`mt-6 text-center font-medium ${
-              message.includes("Failed") ? "text-red-400" : "text-green-400"
+              message.toLowerCase().includes("fail") || message.toLowerCase().includes("error")
+                ? "text-red-400" 
+                : "text-green-400"
             }`}
           >
             {message}
@@ -261,9 +303,16 @@ export default function AdminAddBalance() {
             <button
               onClick={fetchHistory}
               disabled={loadingHistory}
-              className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
+              className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 flex items-center gap-1"
             >
-              {loadingHistory ? "Refreshing..." : "Refresh"}
+              {loadingHistory ? (
+                <>
+                  <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></span>
+                  Refreshing...
+                </>
+              ) : (
+                'Refresh'
+              )}
             </button>
           </div>
 
@@ -290,27 +339,47 @@ export default function AdminAddBalance() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
-                    {sortedHistory.map((action) => (
-                      <tr key={action.id} className="hover:bg-gray-900/50 transition">
+                    {sortedHistory.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-900/50 transition">
                         <td className="px-4 py-3">
-                          {getAmountDisplay(action)}
+                          {getAmountDisplay(item)}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="text-white">{action.targetUser?.email ?? 'Unknown User'}</div>
+                          <div className="text-white font-medium">
+                            {item.targetUser?.email ?? 'Unknown User'}
+                          </div>
                           <div className="text-xs text-gray-500">
-                            Balance: {action.changes?.newBalance ?? action.targetUser?.balance ?? 0}
+                            Current Balance: {item.targetUser?.balance ?? 0}
+                          </div>
+                          {item.changes?.newBalance && (
+                            <div className="text-xs text-gray-600">
+                              New Balance: {item.changes.newBalance}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-300 max-w-xs truncate">
+                          {item.reason || "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-gray-400">
+                            {item.admin?.email ?? 'System'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-300">{action.reason || "—"}</td>
-                        <td className="px-4 py-3 text-gray-400">{action.admin?.email ?? 'System'}</td>
-                        <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(action.createdAt)}</td>
+                        <td className="px-4 py-3 text-gray-400 text-xs">
+                          {formatDate(item.createdAt)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="bg-gray-900 px-4 py-2 text-xs text-gray-400 border-t border-gray-800">
-                Total: {sortedHistory.length} transactions
+              <div className="bg-gray-900 px-4 py-2 text-xs text-gray-400 border-t border-gray-800 flex justify-between">
+                <span>Total: {sortedHistory.length} transactions</span>
+                <span>
+                  Total Added: {sortedHistory
+                    .filter(item => item.action?.toLowerCase().includes('add'))
+                    .reduce((sum, item) => sum + (item.changes?.amountAdded || 0), 0)}
+                </span>
               </div>
             </div>
           )}
