@@ -4,13 +4,20 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 type BalanceHistoryItem = {
-  targetUserId: string;
-  email: string;
-  previousBalance: number;
-  newBalance: number;
-  amountAdded: number;
+  id: string;
+  action: "ADMIN_ADD_DEMO_BALANCE" | "ADMIN_SET_DEMO_BALANCE";
   reason?: string;
-  action: "add" | "set";
+  createdAt: string;
+  changes: {
+    amount: number;
+    previousBalance: number;
+    newDemoBalance: number;
+  };
+  targetUser: {
+    id: string;
+    email: string;
+    demoBalance: number;
+  };
 };
 
 export default function AdminAddBalance() {
@@ -28,6 +35,7 @@ export default function AdminAddBalance() {
 
   const API_URL = process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL;
 
+  /* ================= INIT ================= */
   useEffect(() => {
     setMounted(true);
     if (auth?.token) {
@@ -35,6 +43,37 @@ export default function AdminAddBalance() {
     }
   }, [auth]);
 
+  /* ================= FETCH HISTORY ================= */
+  const fetchHistory = async () => {
+    if (!token || !API_URL) return;
+
+    try {
+      const res = await fetch(
+        `${API_URL}/demo-balance-history`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        setHistory(data.data);
+      }
+    } catch (error) {
+      console.error("History fetch error:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchHistory();
+    }
+  }, [token]);
+
+  /* ================= SUBMIT ================= */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -49,29 +88,27 @@ export default function AdminAddBalance() {
     setMessage(null);
 
     try {
-      const res = await fetch(`${API_URL}/users/demo-balance/all`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          amount: Number(amount),
-          reason,
-          mode,
-        }),
-      });
+      const res = await fetch(
+        `${API_URL}/users/demo-balance/all`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: Number(amount),
+            reason,
+            mode,
+          }),
+        }
+      );
 
       const data = await res.json();
 
       if (data.success) {
         setMessage(data.message);
-
-        // 🔥 directly use backend history
-        if (Array.isArray(data.data)) {
-          setHistory(data.data);
-        }
-
+        await fetchHistory(); // 🔥 refresh real history
         setAmount("");
         setReason("");
         setMode("add");
@@ -91,7 +128,7 @@ export default function AdminAddBalance() {
 
   return (
     <div className="min-h-screen bg-black text-white flex justify-center items-start py-12 px-4">
-      <div className="w-full max-w-4xl bg-[#111111] border border-gray-800 rounded-xl p-10">
+      <div className="w-full max-w-5xl bg-[#111111] border border-gray-800 rounded-xl p-10">
 
         <h2 className="text-2xl font-bold mb-8">Balance Management</h2>
 
@@ -138,57 +175,69 @@ export default function AdminAddBalance() {
         )}
 
         {/* ================= HISTORY TABLE ================= */}
-        {history.length > 0 && (
-          <div className="mt-10 bg-black border border-gray-800 rounded-lg overflow-hidden">
+        <div className="mt-12">
+          <h3 className="text-xl font-bold mb-4">Balance History</h3>
+
+          <div className="overflow-x-auto border border-gray-800 rounded-lg">
             <table className="w-full text-sm">
               <thead className="bg-gray-900 text-gray-300">
                 <tr>
-                  <th className="px-4 py-3 text-left">Amount</th>
                   <th className="px-4 py-3 text-left">User</th>
+                  <th className="px-4 py-3 text-left">Action</th>
+                  <th className="px-4 py-3 text-left">Previous</th>
+                  <th className="px-4 py-3 text-left">New</th>
+                  <th className="px-4 py-3 text-left">Amount</th>
                   <th className="px-4 py-3 text-left">Reason</th>
+                  <th className="px-4 py-3 text-left">Date</th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-gray-800">
-                {history.map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-900/50">
-                    
-                    {/* ✅ Amount Column (NO MORE +0) */}
+                {history.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-900/50">
                     <td className="px-4 py-3">
-                      {item.action === "add" ? (
-                        <div>
-                          <span className="text-green-400 font-medium">
-                            +{item.amountAdded}
-                          </span>
-                          <div className="text-xs text-gray-500">
-                            {item.previousBalance} → {item.newBalance}
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <span className="text-blue-400 font-medium">
-                            {item.newBalance}
-                          </span>
-                          <div className="text-xs text-gray-500">
-                            was {item.previousBalance}
-                          </div>
-                        </div>
-                      )}
+                      {item.targetUser?.email}
                     </td>
 
-                    <td className="px-4 py-3 text-white">
-                      {item.email}
+                    <td className="px-4 py-3">
+                      {item.action === "ADMIN_ADD_DEMO_BALANCE"
+                        ? "Add"
+                        : "Set"}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {item.changes?.previousBalance}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {item.changes?.newDemoBalance}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {item.action === "ADMIN_ADD_DEMO_BALANCE"
+                        ? `+${item.changes?.amount}`
+                        : item.changes?.amount}
                     </td>
 
                     <td className="px-4 py-3 text-gray-400">
                       {item.reason || "—"}
                     </td>
 
+                    <td className="px-4 py-3 text-gray-500">
+                      {new Date(item.createdAt).toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {history.length === 0 && (
+              <div className="p-6 text-center text-gray-500">
+                No history found
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
       </div>
     </div>
