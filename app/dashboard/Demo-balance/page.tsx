@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -10,17 +10,17 @@ type BalanceHistoryItem = {
   targetUserId: string;
   entityType: string;
   entityId: string;
-  changes: {
+  changes?: {
     newBalance: number;
     amountAdded: number;
   };
   reason: string;
   createdAt: string;
-  admin: {
+  admin?: {
     id: string;
     email: string;
   };
-  targetUser: {
+  targetUser?: {
     id: string;
     email: string;
     balance: number;
@@ -30,6 +30,7 @@ type BalanceHistoryItem = {
 export default function AdminAddBalance() {
   const auth = useAuth();
   const [token, setToken] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const [amount, setAmount] = useState<number | "">("");
   const [reason, setReason] = useState<string>("");
@@ -43,6 +44,7 @@ export default function AdminAddBalance() {
 
   // Safe client-only token setup
   useEffect(() => {
+    setMounted(true);
     if (auth?.token) {
       setToken(auth.token);
     }
@@ -78,8 +80,10 @@ export default function AdminAddBalance() {
   };
 
   useEffect(() => {
-    if (token) fetchHistory();
-  }, [token]);
+    if (token && mounted) {
+      fetchHistory();
+    }
+  }, [token, mounted]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,7 +146,11 @@ export default function AdminAddBalance() {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
-  // Client-only render check
+  // Don't render anything until mounted to prevent hydration errors
+  if (!mounted) {
+    return null;
+  }
+
   if (!token) return <p className="text-white p-10">Loading...</p>;
   if (!API_URL) return <p className="text-red-400 p-10">API URL not configured</p>;
 
@@ -254,16 +262,16 @@ export default function AdminAddBalance() {
                     {sortedHistory.map((action) => (
                       <tr key={action.id} className="hover:bg-gray-900/50 transition">
                         <td className="px-4 py-3 text-white font-medium">
-                          +{action.changes.amountAdded}
+                          +{action.changes?.amountAdded ?? 0}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="text-white">{action.targetUser.email}</div>
+                          <div className="text-white">{action.targetUser?.email ?? 'Unknown User'}</div>
                           <div className="text-xs text-gray-500">
-                            Balance: {action.changes.newBalance}
+                            Balance: {action.changes?.newBalance ?? action.targetUser?.balance ?? 0}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-gray-300">{action.reason || "—"}</td>
-                        <td className="px-4 py-3 text-gray-400">{action.admin.email}</td>
+                        <td className="px-4 py-3 text-gray-400">{action.admin?.email ?? 'System'}</td>
                         <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(action.createdAt)}</td>
                       </tr>
                     ))}
