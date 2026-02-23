@@ -28,7 +28,9 @@ type BalanceHistoryItem = {
 };
 
 export default function AdminAddBalance() {
-  const { token } = useAuth();
+  const auth = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
   const [amount, setAmount] = useState<number | "">("");
   const [reason, setReason] = useState<string>("");
   const [mode, setMode] = useState<"add" | "set">("add");
@@ -39,8 +41,15 @@ export default function AdminAddBalance() {
 
   const API_URL = process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL;
 
+  // Safe client-only token setup
+  useEffect(() => {
+    if (auth?.token) {
+      setToken(auth.token);
+    }
+  }, [auth]);
+
   const fetchHistory = async () => {
-    if (!token) return;
+    if (!token || !API_URL) return;
 
     setLoadingHistory(true);
     try {
@@ -99,7 +108,7 @@ export default function AdminAddBalance() {
       const data = await res.json();
 
       if (data.success) {
-        setMessage(data.message); // Use API response message
+        setMessage(data.message);
         setAmount("");
         setReason("");
         setMode("add");
@@ -133,6 +142,10 @@ export default function AdminAddBalance() {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
+  // Client-only render check
+  if (!token) return <p className="text-white p-10">Loading...</p>;
+  if (!API_URL) return <p className="text-red-400 p-10">API URL not configured</p>;
+
   return (
     <div className="min-h-screen bg-black flex justify-center items-start py-12 px-4">
       <div className="w-full max-w-4xl bg-[#111111] border border-gray-800 shadow-2xl rounded-xl p-10">
@@ -144,7 +157,9 @@ export default function AdminAddBalance() {
             <input
               type="number"
               value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
+              onChange={(e) =>
+                setAmount(e.target.value === "" ? "" : Number(e.target.value))
+              }
               className="w-full bg-black border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
               placeholder="Enter amount"
               min="1"
@@ -180,7 +195,13 @@ export default function AdminAddBalance() {
             className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-semibold"
             disabled={loading || !amount || !reason}
           >
-            {loading ? (mode === "add" ? "Adding..." : "Setting...") : mode === "add" ? "Add Balance to All Users" : "Set Balance for All Users"}
+            {loading
+              ? mode === "add"
+                ? "Adding..."
+                : "Setting..."
+              : mode === "add"
+              ? "Add Balance to All Users"
+              : "Set Balance for All Users"}
           </button>
         </form>
 
