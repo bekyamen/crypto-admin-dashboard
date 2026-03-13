@@ -32,7 +32,8 @@ export interface PasswordResetResponse {
 
 export interface UserOverrideResponse {
   userId: string;
-  forceOutcome: 'win' | 'lose' | null;
+  forceOutcome: 'win' | 'lose' | 'random';
+  tradeType: 'REAL' | 'DEMO';
   expiresAt?: string;
   timestamp: string;
 }
@@ -274,10 +275,13 @@ const getUsersWithMode = useCallback(async (): Promise<User[] | null> => {
   );
 
   // -------------------- Set User Override --------------------
-  const setUserOverride = useCallback(
+  
+  // -------------------- Set User Override --------------------
+const setUserOverride = useCallback(
   async (
     userId: string,
-    forceOutcome: 'win' | 'lose' | null
+    forceOutcome: 'win' | 'lose' | 'random',
+    tradeType: 'demo' | 'real'
   ): Promise<UserOverrideResponse | null> => {
     setIsLoading(true);
     setError(null);
@@ -289,7 +293,11 @@ const getUsersWithMode = useCallback(async (): Promise<User[] | null> => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token || ''}`,
         },
-        body: JSON.stringify({ userId, forceOutcome }),
+        body: JSON.stringify({
+          userId,
+          forceOutcome,
+          tradeType,
+        }),
       });
 
       if (!response.ok) {
@@ -298,13 +306,17 @@ const getUsersWithMode = useCallback(async (): Promise<User[] | null> => {
       }
 
       const data: ApiResponse<UserOverrideResponse> = await response.json();
-      console.log('[AdminTradesAPI] User override set:', data.data);
-      return data.data;
 
+      console.log('[AdminTradesAPI] User override set:', data.data);
+
+      return data.data;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to set user override';
+
       console.error('[AdminTradesAPI] setUserOverride Error:', msg);
+
       setError(msg);
+
       return null;
     } finally {
       setIsLoading(false);
