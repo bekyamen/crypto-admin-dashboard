@@ -30,8 +30,8 @@ export default function AdminManagementPage() {
           </p>
         </div>
 
-        {/* Admin Statistics */}
-        <AdminStatistics refreshTrigger={refreshTrigger} />
+        {/* Admin Statistics
+        <AdminStatistics refreshTrigger={refreshTrigger} /> */}
 
         {/* Controls Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -46,7 +46,7 @@ export default function AdminManagementPage() {
 
         {/* Full Width Controls */}
         <div className="space-y-6">
-          <UserOverrideManager onSettingsUpdate={handleSettingsUpdate} />
+          {/* <UserOverrideManager onSettingsUpdate={handleSettingsUpdate} /> */}
           <BetConfigManager onSettingsUpdate={handleSettingsUpdate} />
           <DangerZone onReset={handleSettingsUpdate} />
         </div>

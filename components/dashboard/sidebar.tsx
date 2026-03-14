@@ -11,7 +11,7 @@ interface SidebarProps {
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { href: '/dashboard/analytics', label: 'Analytics', icon: LineChart },
+  // { href: '/dashboard/analytics', label: 'Analytics', icon: LineChart },
   { href: '/dashboard/contacts', label: 'Contacts', icon: Contact },
    { href: '/dashboard/Demo-balance', label: 'Demo Balance', icon: Contact },
 ];

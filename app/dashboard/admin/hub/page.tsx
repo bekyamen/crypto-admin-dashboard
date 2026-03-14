@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,10 +5,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, TrendingUp, Settings, BarChart3 } from 'lucide-react';
 import { UserManagementPanel } from '@/components/admin/user-management-panel';
-import { PlatformTradeAnalytics } from '@/components/admin/platform-trade-analytics';
+// import { PlatformTradeAnalytics } from '@/components/admin/platform-trade-analytics';
 import { UserTradeViewer } from '@/components/admin/user-trade-viewer';
 
-type AdminTab = 'overview' | 'users' | 'trades' | 'analytics';
+type AdminTab = 'overview' | 'users' | 'trades';
 
 export default function AdminHubPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -35,7 +34,7 @@ export default function AdminHubPage() {
               { key: 'overview', label: 'Overview', icon: BarChart3 },
               { key: 'users', label: 'Users', icon: Users },
               { key: 'trades', label: 'User Trades', icon: TrendingUp },
-              { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+             
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
@@ -144,7 +143,7 @@ export default function AdminHubPage() {
 
           {activeTab === 'users' && <UserManagementPanel />}
           {activeTab === 'trades' && <UserTradeViewer />}
-          {activeTab === 'analytics' && <PlatformTradeAnalytics />}
+          {/* {activeTab === 'analytics' && <PlatformTradeAnalytics />} */}
 
         </div>
       </div>
