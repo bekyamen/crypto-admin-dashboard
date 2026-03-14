@@ -3,10 +3,13 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL || 'http://localhost:5000/api/admin';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL || 'http://localhost:5000/api/admin';
 const USE_PROXY = true; // Use Next.js proxy to avoid CORS issues
 
-interface ApiResponse<T> {
+/* -------------------- Types -------------------- */
+
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data?: T;
@@ -16,6 +19,8 @@ interface UseAdminApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: Record<string, unknown>;
 }
+
+/* -------------------- Base API Hook -------------------- */
 
 export function useAdminApi() {
   const { token, logout, isLoggedIn } = useAuth();
@@ -32,9 +37,6 @@ export function useAdminApi() {
           throw new Error('Not authenticated. Please log in.');
         }
 
-        console.log('[v0] Admin API: Calling', options.method || 'GET', endpoint);
-
-        // Use proxy if needed
         const url = USE_PROXY
           ? `/api/admin/proxy?endpoint=${encodeURIComponent(endpoint)}`
           : `${API_BASE_URL}${endpoint}`;
@@ -48,11 +50,8 @@ export function useAdminApi() {
           body: options.body ? JSON.stringify(options.body) : undefined,
         });
 
-        console.log('[v0] Admin API: Response status:', response.status);
-
         if (response.status === 401) {
-          console.error('[v0] Admin API: Unauthorized or expired token');
-          logout(); // Auto logout on 401
+          logout();
           throw new Error('Unauthorized or expired token. Please log in again.');
         }
 
@@ -65,8 +64,8 @@ export function useAdminApi() {
         return data;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
-        console.error('[v0] Admin API: Error:', errorMsg);
         setError(errorMsg);
+        console.error('[Admin API] Error:', errorMsg);
         return null;
       } finally {
         setIsLoading(false);
@@ -78,21 +77,48 @@ export function useAdminApi() {
   return { request, isLoading, error };
 }
 
-// Admin methods
+/* -------------------- Admin Methods -------------------- */
+
 export function useAdminMethods() {
   const { request } = useAdminApi();
 
   return {
+    // Set global mode for all trades
     setGlobalMode: (mode: 'win' | 'lose' | 'random') =>
       request('/mode', { method: 'POST', body: { mode } }),
-    setWinProbability: (percentage: number) =>
-      request('/win-probability', { method: 'POST', body: { percentage } }),
+
+    // Set win probability for a specific trade type (demo/real)
+    setWinProbability: (percentage: number, tradeType: 'demo' | 'real') =>
+      request('/win-probability', {
+        method: 'POST',
+        body: { percentage, tradeType },
+      }),
+
+    // Set a user-specific override
     setUserOverride: (userId: string, forceOutcome: 'win' | 'lose' | null, expiresAt?: string) =>
-      request('/user-override', { method: 'POST', body: { userId, forceOutcome, ...(expiresAt && { expiresAt }) } }),
+      request('/user-override', {
+        method: 'POST',
+        body: { userId, forceOutcome, ...(expiresAt && { expiresAt }) },
+      }),
+
+    // Update bet configuration (profit/loss percentages & expiration time)
     updateBetConfig: (expirationTime: number, profitPercent: number, lossPercent: number) =>
-      request('/bet-config', { method: 'POST', body: { expirationTime, profitPercent, lossPercent } }),
-    getSettings: () => request('/settings', { method: 'GET' }),
+      request('/bet-config', {
+        method: 'POST',
+        body: { expirationTime, profitPercent, lossPercent },
+      }),
+
+    // Fetch current admin settings (DEMO/REAL, win probability, global mode)
+    getSettings: () => request<{
+      DEMO: { globalMode: string; winProbability: number; userOverrides?: Record<string, unknown> };
+      REAL: { globalMode: string; winProbability: number; userOverrides?: Record<string, unknown> };
+    }>('/settings', { method: 'GET' }),
+
+    // Fetch admin stats
     getStats: () => request('/stats', { method: 'GET' }),
-    resetAllData: (confirmation: string) => request('/reset', { method: 'POST', body: { confirmation } }),
+
+    // Reset all platform data (requires confirmation)
+    resetAllData: (confirmation: string) =>
+      request('/reset', { method: 'POST', body: { confirmation } }),
   };
 }

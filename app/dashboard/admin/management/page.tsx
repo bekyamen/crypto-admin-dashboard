@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { GlobalModeControl } from '@/components/admin/global-mode-control';
+// import { GlobalModeControl } from '@/components/admin/global-mode-control';
 import { WinProbabilityControl } from '@/components/admin/win-probability-control';
 import { UserOverrideManager } from '@/components/admin/user-override-manager';
 import { BetConfigManager } from '@/components/admin/bet-config-manager';
@@ -11,6 +11,7 @@ import { DangerZone } from '@/components/admin/danger-zone';
 export default function AdminManagementPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Trigger a refresh of all settings/stats
   const handleSettingsUpdate = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
@@ -34,8 +35,13 @@ export default function AdminManagementPage() {
 
         {/* Controls Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-          <GlobalModeControl onSettingsUpdate={handleSettingsUpdate} />
-          <WinProbabilityControl onSettingsUpdate={handleSettingsUpdate} />
+          {/* Global Mode Controls for Demo and Real trades
+          <GlobalModeControl tradeType="demo" onSettingsUpdate={handleSettingsUpdate} />
+          <GlobalModeControl tradeType="real" onSettingsUpdate={handleSettingsUpdate} /> */}
+
+          {/* Win Probability Controls for Demo and Real trades */}
+          <WinProbabilityControl tradeType="demo" onSettingsUpdate={handleSettingsUpdate} />
+          <WinProbabilityControl tradeType="real" onSettingsUpdate={handleSettingsUpdate} />
         </div>
 
         {/* Full Width Controls */}
