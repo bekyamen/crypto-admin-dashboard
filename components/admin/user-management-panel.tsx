@@ -6,7 +6,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface User {
   id?: string;
@@ -18,9 +24,12 @@ interface User {
   createdAt?: string;
   forceOutcome?: 'win' | 'lose' | 'random';
   tradeType?: 'real' | 'demo';
-  overrideExpiresAt?: string | null;
+  userOverrides?: {
+    tradeType: 'real' | 'demo';
+    forceOutcome: 'win' | 'lose' | 'random';
+    timestamp: string;
+  }[];
 }
-
 
 export function UserManagementPanel() {
   const {
@@ -45,6 +54,7 @@ export function UserManagementPanel() {
 
   const [inlineForceOutcome, setInlineForceOutcome] = useState<Record<string, 'win' | 'lose' | 'random'>>({});
   const [inlineTradeType, setInlineTradeType] = useState<Record<string, 'real' | 'demo'>>({});
+  const [showHistoryUser, setShowHistoryUser] = useState<string | null>(null);
 
   const loadUsers = async () => {
     const result = await getUsersWithMode();
@@ -130,7 +140,7 @@ export function UserManagementPanel() {
 
       {/* Table */}
       <Card className="bg-slate-800 border-slate-700 overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full min-w-[900px]">
           <thead className="bg-slate-900/60 border-b border-slate-700">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-200">User</th>
@@ -140,13 +150,21 @@ export function UserManagementPanel() {
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-200">Trade Type</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-200">Force Outcome</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-200">Apply Override</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-200">Edit Balance/Password</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-200">History</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-200">Edit</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-200">Delete</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-slate-700">
-            {users.map((user) => {
+            {users
+              .filter(u => 
+                !searchTerm || 
+                u.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                u.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map((user) => {
               const userId = user.id!;
               const currentOutcome = user.forceOutcome ?? 'random';
               const currentTradeType = user.tradeType ?? 'real';
@@ -200,45 +218,46 @@ export function UserManagementPanel() {
                   {/* Apply override */}
                   <td className="px-4 py-3 text-center">
                     <Button
-  size="sm"
-  className="bg-purple-600 hover:bg-purple-700 text-white"
-  onClick={async () => {
-    const outcome = inlineForceOutcome[userId];
-    const tradeType = inlineTradeType[userId];
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={async () => {
+                        const outcome = inlineForceOutcome[userId];
+                        const tradeType = inlineTradeType[userId];
 
-    const success = await setUserOverride(userId, outcome, tradeType);
+                        const success = await setUserOverride(userId, outcome, tradeType);
 
-    if (success) {
-      // Update users table state
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId
-            ? { ...u, forceOutcome: outcome, tradeType: tradeType }
-            : u
-        )
-      );
+                        if (success) {
+                          setUsers((prev) =>
+                            prev.map((u) =>
+                              u.id === userId
+                                ? { ...u, forceOutcome: outcome, tradeType: tradeType, userOverrides: [{ tradeType, forceOutcome: outcome, timestamp: new Date().toISOString() }, ...(u.userOverrides ?? [])] }
+                                : u
+                            )
+                          );
 
-      // Update inline selectors so they stay persistent
-      setInlineForceOutcome((prev) => ({
-        ...prev,
-        [userId]: outcome,
-      }));
-
-      setInlineTradeType((prev) => ({
-        ...prev,
-        [userId]: tradeType,
-      }));
-
-      setSuccessMessage('Override updated');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    }
-  }}
->
-  Apply
-</Button>
+                          setInlineForceOutcome((prev) => ({ ...prev, [userId]: outcome }));
+                          setInlineTradeType((prev) => ({ ...prev, [userId]: tradeType }));
+                          setSuccessMessage('Override updated');
+                          setTimeout(() => setSuccessMessage(''), 3000);
+                        }
+                      }}
+                    >
+                      Apply
+                    </Button>
                   </td>
 
-                  {/* Edit Balance / Password */}
+                  {/* History */}
+                  <td className="px-4 py-3 text-center">
+                    <Button
+                      size="sm"
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                      onClick={() => setShowHistoryUser(userId)}
+                    >
+                      History
+                    </Button>
+                  </td>
+
+                  {/* Edit */}
                   <td className="px-4 py-3 text-center">
                     <Button size="sm" variant="outline" onClick={() => openEditModal(user)}>Edit</Button>
                   </td>
@@ -305,6 +324,42 @@ export function UserManagementPanel() {
             <DialogFooter className="mt-4 flex justify-end gap-2">
               <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setEditingUser(null)}>Cancel</Button>
               <Button className="bg-blue-600 hover:bg-blue-700" onClick={applyEdit}>Apply</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Override History Modal */}
+      {showHistoryUser && (
+        <Dialog open={true} onOpenChange={() => setShowHistoryUser(null)}>
+          <DialogContent className="bg-slate-800 text-slate-100 w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Override History</DialogTitle>
+            </DialogHeader>
+
+            <table className="w-full text-sm mt-2">
+              <thead>
+                <tr>
+                  <th className="text-left px-2 py-1">Trade Type</th>
+                  <th className="text-left px-2 py-1">Force Outcome</th>
+                  <th className="text-left px-2 py-1">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.find(u => u.id === showHistoryUser)?.userOverrides
+                  ?.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                  .map((o, idx) => (
+                    <tr key={idx} className="odd:bg-slate-700/20 even:bg-slate-700/10">
+                      <td className="px-2 py-1">{o.tradeType.toUpperCase()}</td>
+                      <td className="px-2 py-1">{o.forceOutcome.toUpperCase()}</td>
+                      <td className="px-2 py-1">{new Date(o.timestamp).toLocaleString()}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+
+            <DialogFooter>
+              <Button onClick={() => setShowHistoryUser(null)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
