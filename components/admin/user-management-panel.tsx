@@ -5,7 +5,7 @@ import { useAdminTradesApi } from '@/lib/use-admin-trades-api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, Trash2 } from 'lucide-react';
+import { AlertCircle, Trash2, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,7 @@ export function UserManagementPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [successMessage, setSuccessMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [balanceAmount, setBalanceAmount] = useState('');
@@ -56,9 +57,25 @@ export function UserManagementPanel() {
   const [inlineTradeType, setInlineTradeType] = useState<Record<string, 'real' | 'demo'>>({});
   const [showHistoryUser, setShowHistoryUser] = useState<string | null>(null);
 
-  const loadUsers = async () => {
-    const result = await getUsersWithMode();
-    if (result) setUsers(result);
+  const loadUsers = async (showRefreshAnimation = false) => {
+    if (showRefreshAnimation) {
+      setIsRefreshing(true);
+    }
+    
+    try {
+      const result = await getUsersWithMode();
+      if (result) {
+        setUsers(result);
+        setSuccessMessage('Data refreshed successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error refreshing users:', err);
+    } finally {
+      if (showRefreshAnimation) {
+        setIsRefreshing(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -113,6 +130,10 @@ export function UserManagementPanel() {
     }
   };
 
+  const handleRefresh = () => {
+    loadUsers(true);
+  };
+
   return (
     <div className="space-y-4">
       {/* Success / Error */}
@@ -127,7 +148,7 @@ export function UserManagementPanel() {
         </div>
       )}
 
-      {/* Search */}
+      {/* Search and Refresh */}
       <div className="flex gap-2">
         <Input
           placeholder="Search by name or email"
@@ -135,7 +156,17 @@ export function UserManagementPanel() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <Button onClick={loadUsers}>Refresh</Button>
+        <Button 
+          onClick={handleRefresh} 
+          disabled={isRefreshing}
+          className="relative"
+        >
+          <RefreshCw 
+            size={16} 
+            className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} 
+          />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
       </div>
 
       {/* Table */}
